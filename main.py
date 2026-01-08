@@ -1,59 +1,65 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from database import Database
 from mahasiswa import Mahasiswa
 
 db = Database()
 mhs = Mahasiswa(db)
-
 selected_id = None
 
 def refresh_data():
-    listbox.delete(0, tk.END)
+    for row in tree.get_children():
+        tree.delete(row)
+
     for data in mhs.tampilkan():
-        listbox.insert(tk.END, data)
+        tree.insert("", tk.END, values=data)
 
 def reset_form():
-    global selected_id
-    selected_id = None
     entry_nim.delete(0, tk.END)
     entry_nama.delete(0, tk.END)
     entry_prodi.delete(0, tk.END)
     entry_angkatan.delete(0, tk.END)
 
-def tambah_data():
-    nim = entry_nim.get()
-    nama = entry_nama.get()
-    prodi = entry_prodi.get()
-    angkatan = entry_angkatan.get()
+def reset_selection():
+    global selected_id
+    selected_id = None
+    tree.selection_remove(tree.selection())
 
-    if not nim or not nama or not prodi or not angkatan:
+def reset_all():
+    reset_form()
+    reset_selection()
+
+def tambah_data():
+    if not entry_nim.get() or not entry_nama.get() or not entry_prodi.get() or not entry_angkatan.get():
         messagebox.showwarning("Validasi", "Semua field wajib diisi!")
         return
 
-    mhs.tambah(nim, nama, prodi, angkatan)
+    mhs.tambah(
+        entry_nim.get(),
+        entry_nama.get(),
+        entry_prodi.get(),
+        entry_angkatan.get()
+    )
     refresh_data()
-    reset_form()
+    reset_all()
 
 def pilih_data(event):
     global selected_id
-    try:
-        index = listbox.curselection()[0]
-        data = listbox.get(index)
 
-        selected_id = data[0]
+    selected = tree.selection()
+    if not selected:
+        return
 
-        entry_nim.delete(0, tk.END)
-        entry_nama.delete(0, tk.END)
-        entry_prodi.delete(0, tk.END)
-        entry_angkatan.delete(0, tk.END)
+    item = tree.item(selected[0])
+    data = item["values"]
 
-        entry_nim.insert(0, data[1])
-        entry_nama.insert(0, data[2])
-        entry_prodi.insert(0, data[3])
-        entry_angkatan.insert(0, data[4])
-    except IndexError:
-        pass
+    selected_id = data[0]
+
+    reset_form()
+    entry_nim.insert(0, data[1])
+    entry_nama.insert(0, data[2])
+    entry_prodi.insert(0, data[3])
+    entry_angkatan.insert(0, data[4])
 
 def update_data():
     if selected_id is None:
@@ -68,7 +74,7 @@ def update_data():
         entry_angkatan.get()
     )
     refresh_data()
-    reset_form()
+    reset_all()
 
 def hapus_data():
     if selected_id is None:
@@ -78,37 +84,99 @@ def hapus_data():
     if messagebox.askyesno("Konfirmasi", "Yakin ingin menghapus data?"):
         mhs.hapus(selected_id)
         refresh_data()
-        reset_form()
+        reset_all()
 
-# ================= GUI =================
 root = tk.Tk()
-root.title("CRUD Mahasiswa - PBO")
-root.geometry("500x450")
+root.title("Sistem Manajemen Mahasiswa")
+root.geometry("960x540")
+root.configure(bg="#f4f6f8")
 
-tk.Label(root, text="NIM").pack()
-entry_nim = tk.Entry(root)
-entry_nim.pack()
+header = tk.Frame(root, bg="#111827", height=60)
+header.pack(fill="x")
 
-tk.Label(root, text="Nama").pack()
-entry_nama = tk.Entry(root)
-entry_nama.pack()
+tk.Label(
+    header,
+    text="SISTEM CRUD MAHASISWA",
+    bg="#111827",
+    fg="white",
+    font=("Segoe UI", 16, "bold")
+).pack(pady=15)
 
-tk.Label(root, text="Prodi").pack()
-entry_prodi = tk.Entry(root)
-entry_prodi.pack()
+main = tk.Frame(root, bg="#f4f6f8")
+main.pack(fill="both", expand=True, padx=20, pady=20)
 
-tk.Label(root, text="Angkatan").pack()
-entry_angkatan = tk.Entry(root)
-entry_angkatan.pack()
+form_card = tk.Frame(main, bg="white", width=300)
+form_card.pack(side="left", fill="y", padx=(0, 15))
 
-tk.Button(root, text="Tambah", command=tambah_data).pack(pady=5)
-tk.Button(root, text="Update", command=update_data).pack(pady=5)
-tk.Button(root, text="Hapus", command=hapus_data).pack(pady=5)
-tk.Button(root, text="Reset", command=reset_form).pack(pady=5)
+tk.Label(
+    form_card,
+    text="Form Mahasiswa",
+    bg="white",
+    font=("Segoe UI", 13, "bold")
+).pack(pady=15)
 
-listbox = tk.Listbox(root, width=70)
-listbox.pack(pady=10)
-listbox.bind("<<ListboxSelect>>", pilih_data)
+def input_field(label):
+    tk.Label(form_card, text=label, bg="white", anchor="w").pack(fill="x", padx=20)
+    e = tk.Entry(form_card)
+    e.pack(fill="x", padx=20, pady=5)
+    return e
+
+entry_nim = input_field("NIM")
+entry_nama = input_field("Nama")
+entry_prodi = input_field("Program Studi")
+entry_angkatan = input_field("Angkatan")
+
+btn_frame = tk.Frame(form_card, bg="white")
+btn_frame.pack(pady=15)
+
+def action_btn(text, color, cmd):
+    return tk.Button(
+        btn_frame,
+        text=text,
+        bg=color,
+        fg="white",
+        relief="flat",
+        width=12,
+        command=cmd
+    )
+
+action_btn("Tambah", "#2563eb", tambah_data).grid(row=0, column=0, padx=5, pady=5)
+action_btn("Update", "#16a34a", update_data).grid(row=0, column=1, padx=5)
+action_btn("Hapus", "#dc2626", hapus_data).grid(row=1, column=0, padx=5, pady=5)
+action_btn("Reset", "#6b7280", reset_all).grid(row=1, column=1, padx=5)
+
+data_card = tk.Frame(main, bg="white")
+data_card.pack(side="right", fill="both", expand=True)
+
+tk.Label(
+    data_card,
+    text="Data Mahasiswa",
+    bg="white",
+    font=("Segoe UI", 13, "bold")
+).pack(pady=15)
+
+columns = ("id", "nim", "nama", "prodi", "angkatan")
+
+tree = ttk.Treeview(
+    data_card,
+    columns=columns,
+    show="headings"
+)
+
+tree.heading("id", text="ID")
+tree.heading("nim", text="NIM")
+tree.heading("nama", text="Nama")
+tree.heading("prodi", text="Prodi")
+tree.heading("angkatan", text="Angkatan")
+
+tree.column("id", width=50, anchor="center")
+tree.column("nim", width=100)
+tree.column("nama", width=220)
+tree.column("prodi", width=160)
+tree.column("angkatan", width=90, anchor="center")
+
+tree.pack(fill="both", expand=True, padx=15, pady=10)
+tree.bind("<<TreeviewSelect>>", pilih_data)
 
 refresh_data()
 root.mainloop()
